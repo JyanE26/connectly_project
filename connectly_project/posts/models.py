@@ -3,8 +3,17 @@ from django.contrib.auth.models import User
 
 
 class Post(models.Model):
+    POST_TYPES = {
+        'text': 'Standard text post',
+        'image': 'Post with image attachment',
+        'video': 'Post with video attachment',
+        'article': 'Long-form article post',
+        'poll': 'Interactive poll post'
+    }
+    
     content = models.TextField()
     author = models.ForeignKey(User, related_name='posts', on_delete=models.CASCADE)
+    post_type = models.CharField(max_length=20, choices=POST_TYPES, default='text')
     created_at = models.DateTimeField(auto_now_add=True)
 
 
