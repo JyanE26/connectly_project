@@ -6,8 +6,8 @@ from rest_framework.authentication import TokenAuthentication
 from rest_framework.authtoken.models import Token
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate
-from .models import Post, Comment
-from .serializers import UserSerializer, PostSerializer, CommentSerializer
+from .models import Post, Comment, Like
+from .serializers import UserSerializer, PostSerializer, CommentSerializer, LikeSerializer
 from .permissions import (
     require_group, require_any_group, IsPostAuthor, IsCommentAuthor, 
     IsAdminOrReadOnly, IsAuthorOrReadOnly, IsModeratorOrAdmin
@@ -291,3 +291,199 @@ class AdminUserManagement(APIView):
         users = User.objects.all()
         serializer = UserSerializer(users, many=True)
         return Response(serializer.data)
+
+
+# New Interaction Views
+
+class LikePostView(APIView):
+    """
+    View for liking/unliking a post
+    POST /posts/{id}/like
+    """
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, post_id):
+        logger_singleton = LoggerSingleton()
+        
+        try:
+            post = Post.objects.get(id=post_id)
+            user = request.user
+            
+            # Check if user already liked the post
+            existing_like = Like.objects.filter(user=user, post=post).first()
+            
+            if existing_like:
+                # Unlike the post
+                existing_like.delete()
+                liked = False
+                message = "Post unliked successfully"
+                status_code = status.HTTP_200_OK
+            else:
+                # Like the post
+                Like.objects.create(user=user, post=post)
+                liked = True
+                message = "Post liked successfully"
+                status_code = status.HTTP_201_CREATED
+            
+            # Get updated like count
+            like_count = Like.objects.filter(post=post).count()
+            
+            # Log the interaction
+            logger_singleton.log_api_request(
+                method="POST",
+                endpoint=f"/posts/{post_id}/like",
+                user=user,
+                status_code=status_code
+            )
+            
+            response_data = {
+                'message': message,
+                'liked': liked,
+                'like_count': like_count,
+                'post_id': post_id
+            }
+            
+            return Response(response_data, status=status_code)
+            
+        except Post.DoesNotExist:
+            return Response(
+                {'error': 'Post not found'}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            logger_singleton.log_api_request(
+                method="POST",
+                endpoint=f"/posts/{post_id}/like",
+                user=request.user,
+                status_code=500
+            )
+            return Response(
+                {'error': 'An error occurred while processing your request'}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+class CommentPostView(APIView):
+    """
+    View for commenting on a post
+    POST /posts/{id}/comment
+    """
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, post_id):
+        logger_singleton = LoggerSingleton()
+        
+        try:
+            post = Post.objects.get(id=post_id)
+            user = request.user
+            text = request.data.get('text', '').strip()
+            
+            # Validate comment content
+            if not text:
+                return Response(
+                    {'error': 'Comment content cannot be empty'}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Create comment
+            comment = Comment.objects.create(
+                author=user,
+                post=post,
+                text=text
+            )
+            
+            # Get updated comment count
+            comment_count = Comment.objects.filter(post=post).count()
+            
+            # Log the interaction
+            logger_singleton.log_api_request(
+                method="POST",
+                endpoint=f"/posts/{post_id}/comment",
+                user=user,
+                status_code=status.HTTP_201_CREATED
+            )
+            
+            # Serialize and return the comment
+            serializer = CommentSerializer(comment)
+            
+            response_data = {
+                'message': 'Comment created successfully',
+                'comment': serializer.data,
+                'comment_count': comment_count,
+                'post_id': post_id
+            }
+            
+            return Response(response_data, status=status.HTTP_201_CREATED)
+            
+        except Post.DoesNotExist:
+            return Response(
+                {'error': 'Post not found'}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            logger_singleton.log_api_request(
+                method="POST",
+                endpoint=f"/posts/{post_id}/comment",
+                user=request.user,
+                status_code=500
+            )
+            return Response(
+                {'error': 'An error occurred while processing your request'}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+class GetPostCommentsView(APIView):
+    """
+    View for retrieving all comments for a post
+    GET /posts/{id}/comments
+    """
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, post_id):
+        logger_singleton = LoggerSingleton()
+        
+        try:
+            post = Post.objects.get(id=post_id)
+            
+            # Get all comments for the post, ordered by creation date
+            comments = Comment.objects.filter(post=post).order_by('created_at')
+            
+            # Serialize comments
+            serializer = CommentSerializer(comments, many=True)
+            
+            # Log the request
+            logger_singleton.log_api_request(
+                method="GET",
+                endpoint=f"/posts/{post_id}/comments",
+                user=request.user,
+                status_code=status.HTTP_200_OK
+            )
+            
+            response_data = {
+                'post_id': post_id,
+                'comments': serializer.data,
+                'comment_count': len(comments)
+            }
+            
+            return Response(response_data, status=status.HTTP_200_OK)
+            
+        except Post.DoesNotExist:
+            return Response(
+                {'error': 'Post not found'}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            logger_singleton.log_api_request(
+                method="GET",
+                endpoint=f"/posts/{post_id}/comments",
+                user=request.user,
+                status_code=500
+            )
+            return Response(
+                {'error': 'An error occurred while retrieving comments'}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
