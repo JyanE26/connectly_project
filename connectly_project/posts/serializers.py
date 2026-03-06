@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from .models import Post, Comment
+from .models import Post, Comment, Like
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -73,3 +73,26 @@ class SafeUserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ['id', 'username']  # Only expose non-sensitive public info
+
+
+class LikeSerializer(serializers.ModelSerializer):
+    username = serializers.CharField(source='user.username', read_only=True)
+    post_title = serializers.CharField(source='post.title', read_only=True)
+
+    class Meta:
+        model = Like
+        fields = ['id', 'user', 'username', 'post', 'post_title', 'created_at']
+        extra_kwargs = {
+            'user': {'write_only': True},  # Use username for display
+            'post': {'write_only': True}   # Use post_title for display
+        }
+
+    def validate_post(self, value):
+        if not Post.objects.filter(id=value.id).exists():
+            raise serializers.ValidationError("Post not found.")
+        return value
+
+    def validate_user(self, value):
+        if not User.objects.filter(id=value.id).exists():
+            raise serializers.ValidationError("User not found.")
+        return value

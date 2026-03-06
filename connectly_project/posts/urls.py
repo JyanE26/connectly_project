@@ -1,7 +1,8 @@
 from django.urls import path
 from .views import (
     UserListCreate, PostListCreate, CommentListCreate, LoginView, AdminUserManagement,
-    PostDetailView, CommentDetailView, ProtectedView, LogoutView
+    PostDetailView, CommentDetailView, ProtectedView, LogoutView,
+    LikePostView, CommentPostView, GetPostCommentsView
 )
 from .config_views import ConfigView
 from .factory_views import CreatePostView
@@ -16,6 +17,9 @@ urlpatterns = [
     path('posts/', PostListCreate.as_view(), name='post-list-create'),
     path('posts/<int:pk>/', PostDetailView.as_view(), name='post-detail'),
     path('posts/create/', CreatePostView.as_view(), name='post-create-factory'),
+    path('posts/<int:post_id>/like/', LikePostView.as_view(), name='like-post'),
+    path('posts/<int:post_id>/comment/', CommentPostView.as_view(), name='comment-post'),
+    path('posts/<int:post_id>/comments/', GetPostCommentsView.as_view(), name='get-post-comments'),
     path('comments/', CommentListCreate.as_view(), name='comment-list-create'),
     path('comments/<int:pk>/', CommentDetailView.as_view(), name='comment-detail'),
     path('admin/users/', AdminUserManagement.as_view(), name='admin-user-management'),
