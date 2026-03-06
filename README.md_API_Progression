@@ -1,0 +1,30 @@
+Connectly API is a DJANGO REST Framework Application
+
+How to Setup:
+- Install Django - pip install django djangorestframework
+- Navigate to project directory - cd connectly_project/connectly_project
+- Activate the server - python manage.py runserver_plus --cert ../cert.pem --key ../key.pem
+
+Server Access:
+HTTPS URL: https://localhost:8000
+Admin Panel: https://localhost:8000/admin/
+
+Postman Testing Tokens:
+1) admin - Token: 7590dfbdd033537fc037fad925666d93e61d8246
+2) testuser - Token: add7bd8d203fcbcda47aa153b1166a8483571101
+3) testuser1 - Token: 6be0dfaf41ef01be2180b24b36792d86a21dcd68
+
+
+Milestone 2 Progression
+
+Like and Comments:
+
+- Add Like model with user-post unique constraint
+- Add LikeSerializer and update CommentSerializer
+- Create LikePostView for like/unlike toggle functionality
+- Create CommentPostView for comment creation
+- Create GetPostCommentsView for comment retrieval
+- Add URL patterns for all new endpoints
+- Include comprehensive error handling and validation
+- Integrate with existing LoggerSingleton for API logging
+- Add database migration for Like model
